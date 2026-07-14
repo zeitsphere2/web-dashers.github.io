@@ -22,6 +22,36 @@
     <meta property="twitter:description" content="Dih is a fan-made browser mod of Geometry Dash." />
     <meta property="twitter:image" content="https://web-dashers.github.io/assets/logo.png" />
 
+    <!-- Phaser boot freeze fix -->
+    <script>
+        window._locked = true;
+
+        // Intercept Phaser.Game boot until unlocked
+        Object.defineProperty(window, "_phaserBootIntercepted", { value: true });
+
+        const _definePhaserIntercept = () => {
+            if (!window.Phaser || !window.Phaser.Game) return;
+
+            const originalGame = window.Phaser.Game;
+
+            window.Phaser.Game = function (...args) {
+                if (window._locked) {
+                    window._pendingPhaserArgs = args;
+                    return; // stop boot
+                }
+                return new originalGame(...args);
+            };
+        };
+
+        // Keep checking until Phaser loads
+        const phaserCheck = setInterval(() => {
+            if (window.Phaser && window.Phaser.Game) {
+                clearInterval(phaserCheck);
+                _definePhaserIntercept();
+            }
+        }, 10);
+    </script>
+
     <!-- ORIGINAL GAME SCRIPTS (DO NOT TOUCH) -->
     <script src="assets/scripts/game/allObjects.js?latest"></script>
     <script src="assets/scripts/game/allLevels.js"></script>
@@ -117,6 +147,13 @@
             function unlock() {
                 if (input.value === PASS) {
                     overlay.style.display = "none";
+                    window._locked = false;
+
+                    // Boot Phaser now
+                    if (window._pendingPhaserArgs) {
+                        new window.Phaser.Game(...window._pendingPhaserArgs);
+                        window._pendingPhaserArgs = null;
+                    }
                 } else {
                     error.textContent = "Incorrect passcode.";
                 }
