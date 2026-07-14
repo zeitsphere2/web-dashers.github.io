@@ -4,55 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Dih</title>
+
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
     <link rel="stylesheet" href="assets/style.css">
-    <meta name="description" content="Dih is a fan-made browser mod of Geometry Dash.">
-    <meta name="theme-color" content="#80ED33">
 
-    <!-- Embeds -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://web-dashers.github.io/" />
-    <meta property="og:title" content="Dih" />
-    <meta property="og:description" content="Dih is a fan-made browser mod of Geometry Dash." />
-    <meta property="og:image" content="https://web-dashers.github.io/assets/logo.png" />
-
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://web-dashers.github.io/" />
-    <meta property="twitter:title" content="Dih" />
-    <meta property="twitter:description" content="Dih is a fan-made browser mod of Geometry Dash." />
-    <meta property="twitter:image" content="https://web-dashers.github.io/assets/logo.png" />
-
-    <!-- Phaser boot freeze fix -->
-    <script>
-        window._locked = true;
-
-        // Intercept Phaser.Game boot until unlocked
-        Object.defineProperty(window, "_phaserBootIntercepted", { value: true });
-
-        const _definePhaserIntercept = () => {
-            if (!window.Phaser || !window.Phaser.Game) return;
-
-            const originalGame = window.Phaser.Game;
-
-            window.Phaser.Game = function (...args) {
-                if (window._locked) {
-                    window._pendingPhaserArgs = args;
-                    return; // stop boot
-                }
-                return new originalGame(...args);
-            };
-        };
-
-        // Keep checking until Phaser loads
-        const phaserCheck = setInterval(() => {
-            if (window.Phaser && window.Phaser.Game) {
-                clearInterval(phaserCheck);
-                _definePhaserIntercept();
-            }
-        }, 10);
-    </script>
-
-    <!-- ORIGINAL GAME SCRIPTS (DO NOT TOUCH) -->
+    <!-- Original scripts (unchanged) -->
     <script src="assets/scripts/game/allObjects.js?latest"></script>
     <script src="assets/scripts/game/allLevels.js"></script>
     <script src="assets/scripts/libs/phaser.min.js"></script>
@@ -75,50 +31,55 @@
     <script defer src="assets/scripts/core/main.js"></script>
 
     <style>
-        /* PASSCODE LOCK */
-        #lock-overlay {
+        /* PASSCODE UI (does NOT block Phaser boot) */
+        #lock-ui {
             position: fixed;
-            inset: 0;
-            background: #000000ee;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #111;
+            padding: 25px;
+            border-radius: 12px;
+            color: white;
             z-index: 999999;
             font-family: system-ui;
         }
-        #lock-box {
-            background:#111;
-            padding:25px;
-            border-radius:12px;
-            min-width:260px;
-            text-align:center;
-            color:white;
-        }
+
         #lock-input {
-            width:100%;
-            padding:10px;
-            border-radius:8px;
-            border:1px solid #444;
-            background:black;
-            color:white;
-            font-size:16px;
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: black;
+            color: white;
+            font-size: 16px;
         }
+
         #lock-button {
-            margin-top:12px;
-            width:100%;
-            padding:10px;
-            border-radius:8px;
-            background:#80ED33;
-            border:none;
-            font-weight:600;
-            cursor:pointer;
+            margin-top: 12px;
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            background: #80ED33;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
         }
+
         #lock-error {
-            color:#ff6b6b;
-            margin-top:10px;
-            height:16px;
+            color: #ff6b6b;
+            margin-top: 10px;
+            height: 16px;
         }
+
+        /* Input blocker (transparent, allows Phaser to boot) */
+        #input-blocker {
+            position: fixed;
+            inset: 0;
+            z-index: 999998;
+            background: transparent;
+        }
+
         #lock-watermark {
             position: fixed;
             right: 10px;
@@ -126,34 +87,25 @@
             color: #ccc;
             font-size: 0.8rem;
             font-family: system-ui;
-            z-index: 1000000;
+            z-index: 999999;
             pointer-events: none;
         }
     </style>
 
     <script>
-        // Prevent right-click
-        document.oncontextmenu = e => e.preventDefault();
-
-        // PASSCODE LOGIC
         const PASS = "393546";
 
         window.addEventListener("DOMContentLoaded", () => {
-            const overlay = document.getElementById("lock-overlay");
+            const ui = document.getElementById("lock-ui");
+            const blocker = document.getElementById("input-blocker");
             const input = document.getElementById("lock-input");
             const button = document.getElementById("lock-button");
             const error = document.getElementById("lock-error");
 
             function unlock() {
                 if (input.value === PASS) {
-                    overlay.style.display = "none";
-                    window._locked = false;
-
-                    // Boot Phaser now
-                    if (window._pendingPhaserArgs) {
-                        new window.Phaser.Game(...window._pendingPhaserArgs);
-                        window._pendingPhaserArgs = null;
-                    }
+                    ui.remove();
+                    blocker.remove(); // game becomes playable
                 } else {
                     error.textContent = "Incorrect passcode.";
                 }
@@ -168,17 +120,20 @@
 </head>
 
 <body>
-    <!-- PASSCODE OVERLAY -->
-    <div id="lock-overlay">
-        <div id="lock-box">
-            <div style="margin-bottom:10px;font-size:18px;">Enter passcode to access Dih</div>
-            <input id="lock-input" type="password" placeholder="Passcode">
-            <button id="lock-button">Unlock</button>
-            <div id="lock-error"></div>
-        </div>
+
+    <!-- Transparent blocker (does NOT freeze Phaser) -->
+    <div id="input-blocker"></div>
+
+    <!-- Passcode box -->
+    <div id="lock-ui">
+        <div style="margin-bottom:10px;font-size:18px;">Enter passcode to access Dih</div>
+        <input id="lock-input" type="password" placeholder="Passcode">
+        <button id="lock-button">Unlock</button>
+        <div id="lock-error"></div>
     </div>
 
-    <!-- WATERMARK -->
+    <!-- Watermark -->
     <div id="lock-watermark">made by adam s :)</div>
+
 </body>
 </html>
